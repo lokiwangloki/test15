@@ -94,8 +94,10 @@ def _cpa_auth_files_url(raw_url: str) -> str:
     if not path.endswith("/auth-files"):
         if "/management" in path:
             path = path.split("/management")[0] + "/management/auth-files"
+        elif not path:
+            path = "/v0/management/auth-files"
         else:
-            path = path + "/auth-files"
+            path = path.rstrip("/") + "/v0/management/auth-files"
     return urlunparse((parsed.scheme, parsed.netloc, path, "", "", ""))
 
 

@@ -898,9 +898,14 @@ def _cpa_normalize_api_root(raw_url):
     path = parsed.path or ""
     if path.endswith("/management.html"):
         path = path[:-len("/management.html")] + "/v0/management"
-    for suffix in ("/api-call", "/auth-files"):
-        if path.endswith(suffix):
-            path = path[:-len(suffix)]
+    elif path.endswith("/auth-files"):
+        path = path[:-len("/auth-files")]
+    elif path.endswith("/api-call"):
+        path = path[:-len("/api-call")]
+    elif not path or path == "/":
+        path = "/v0/management"
+    elif "/management" not in path:
+        path = path.rstrip("/") + "/v0/management"
     normalized = _cpa_urlunparse((parsed.scheme, parsed.netloc, path.rstrip("/"), "", "", ""))
     return normalized.rstrip("/")
 
