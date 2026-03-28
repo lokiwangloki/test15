@@ -54,9 +54,7 @@ def _normalize_proxy_value(value: Any) -> str:
 def _load_config():
     config = {
         "total_accounts": 3,
-        "mail_provider": "duckmail",
-        "cfmail_config_path": "zhuce5_cfmail_accounts.json",
-        "cfmail_profile": "auto",
+        "mail_provider": "tempmail_lol",
         "duckmail_api_base": "https://api.duckmail.sbs",
         "duckmail_bearer": "",
         "tempmail_lol_api_base": "https://api.tempmail.lol/v2",
@@ -146,8 +144,8 @@ def _as_bool(value):
 
 
 _CONFIG = _load_config()
-DUCKMAIL_API_BASE = _CONFIG["duckmail_api_base"]
-DUCKMAIL_BEARER = _CONFIG["duckmail_bearer"]
+DUCKMAIL_API_BASE = _CONFIG.get("duckmail_api_base", "https://api.duckmail.sbs")
+DUCKMAIL_BEARER = _CONFIG.get("duckmail_bearer", "")
 TEMPMAIL_LOL_API_BASE = _CONFIG.get("tempmail_lol_api_base", "https://api.tempmail.lol/v2").rstrip("/")
 LAMAIL_API_BASE = _CONFIG.get("lamail_api_base", "https://maliapi.215.im/v1").rstrip("/")
 LAMAIL_API_KEY = str(_CONFIG.get("lamail_api_key", "") or "").strip()
@@ -168,7 +166,7 @@ UPLOAD_API_TOKEN = _CONFIG["upload_api_token"]
 UPLOAD_API_PROXY = str(_CONFIG.get("upload_api_proxy", "") or "").strip()
 CPA_CLEANUP_ENABLED = _as_bool(_CONFIG.get("cpa_cleanup_enabled", True))
 CPA_UPLOAD_EVERY_N = max(1, int(_CONFIG.get("cpa_upload_every_n", 3) or 3))
-MAIL_PROVIDER = str(_CONFIG.get("mail_provider", "duckmail")).strip().lower()
+MAIL_PROVIDER = str(_CONFIG.get("mail_provider", "tempmail_lol")).strip().lower()
 BATCH_MODE = str(_CONFIG.get("batch_mode", "pipeline") or "pipeline").strip().lower()
 TASK_LAUNCH_INTERVAL_MIN_SECONDS = max(0, int(_CONFIG.get("task_launch_interval_min_seconds", 1) or 0))
 TASK_LAUNCH_INTERVAL_MAX_SECONDS = max(
