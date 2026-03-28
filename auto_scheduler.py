@@ -11,6 +11,7 @@ import sys
 import json
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urlparse
 
 from config_env import env_override
 
