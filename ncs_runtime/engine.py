@@ -3,7 +3,7 @@ from typing import Optional
 
 import ncs_register_legacy as legacy
 
-from .email_services import build_mailbox_service
+from .email_services import LaMailMailboxService, build_mailbox_service, should_fallback_to_lamail
 
 
 @dataclass
@@ -36,13 +36,27 @@ class RegistrationEngine:
                 line += f"----oauth={'ok' if oauth_ok else 'fail'}\n"
                 out.write(line)
 
+    def _create_mailbox_with_fallback(self, register_client, provider: str):
+        mailbox_service = build_mailbox_service(register_client, provider)
+        register_client._print(f"[{provider}] 初始化邮箱服务...")
+        try:
+            mailbox = mailbox_service.create_mailbox()
+            return mailbox_service, mailbox, provider
+        except Exception as error:
+            if provider == "tempmail_lol" and should_fallback_to_lamail(error):
+                register_client._print("[tempmail_lol] 命中 429 限流，自动切换到 lamail...")
+                fallback_service = LaMailMailboxService(register_client)
+                mailbox = fallback_service.create_mailbox()
+                return fallback_service, mailbox, "lamail"
+            raise
+
     def run(self) -> RegistrationResult:
         provider = legacy.MAIL_PROVIDER
         register_client = legacy.ChatGPTRegister(proxy=self.proxy, tag=f"{self.idx}")
         try:
-            mailbox_service = build_mailbox_service(register_client, provider)
-            register_client._print(f"[{provider}] 初始化邮箱服务...")
-            mailbox = mailbox_service.create_mailbox()
+            mailbox_service, mailbox, effective_provider = self._create_mailbox_with_fallback(
+                register_client, provider
+            )
             register_client.tag = mailbox.email.split("@")[0]
 
             chatgpt_password = legacy._generate_password()
@@ -52,7 +66,7 @@ class RegistrationEngine:
             with legacy._print_lock:
                 print(f"\n{'=' * 60}")
                 print(f"  [{self.idx}/{self.total}] 注册: {mailbox.email}")
-                print(f"  邮箱服务: {provider}")
+                print(f"  邮箱服务: {effective_provider}")
                 print(f"  ChatGPT密码: {chatgpt_password}")
                 if mailbox.password:
                     print(f"  邮箱密码: {mailbox.password}")
@@ -66,7 +80,7 @@ class RegistrationEngine:
                 name,
                 birthdate,
                 mailbox.token,
-                provider=provider,
+                provider=effective_provider,
                 otp_fetcher=otp_fetcher,
             )
 
@@ -77,7 +91,7 @@ class RegistrationEngine:
                     mailbox.email,
                     chatgpt_password,
                     mail_token=mailbox.token,
-                    provider=provider,
+                    provider=effective_provider,
                     otp_fetcher=otp_fetcher,
                 )
                 oauth_ok = bool(tokens and tokens.get("access_token"))
@@ -98,7 +112,7 @@ class RegistrationEngine:
             return RegistrationResult(
                 idx=self.idx,
                 success=True,
-                provider=provider,
+                provider=effective_provider,
                 email=mailbox.email,
                 email_password=mailbox.password,
                 chatgpt_password=chatgpt_password,
@@ -114,4 +128,3 @@ class RegistrationEngine:
                 provider=provider,
                 error_message=str(error),
             )
-

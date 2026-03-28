@@ -11,6 +11,7 @@ fake_curl_cffi.requests = types.SimpleNamespace()
 sys.modules.setdefault("curl_cffi", fake_curl_cffi)
 
 import ncs_register
+from ncs_runtime import email_services, engine as runtime_engine
 
 
 class ProxyNormalizationTests(unittest.TestCase):
@@ -128,6 +129,8 @@ class ProxyNormalizationTests(unittest.TestCase):
     def test_scheduler_workflow_includes_cpa_dns_diagnostics(self):
         workflow = Path(".github/workflows/scheduler.yml").read_text(encoding="utf-8")
         self.assertIn("Diagnose CPA DNS", workflow)
+        self.assertIn("LAMAIL_DOMAIN", workflow)
+        self.assertIn("LAMAIL_API_KEY", workflow)
 
     def test_mailbox_service_factory_supports_lamail_and_tempmail_only(self):
         fake_register = object()
@@ -141,6 +144,21 @@ class ProxyNormalizationTests(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             ncs_register._build_mailbox_service(fake_register, "duckmail")
+
+    def test_tempmail_rate_limit_falls_back_to_lamail(self):
+        register_client = mock.Mock()
+        register_client.create_tempmail_lol_email.side_effect = Exception(
+            'TempMail.lol 创建失败: 429 - {"error":"Rate limited (free)"}'
+        )
+        register_client.create_lamail_email.return_value = ("fallback@example.com", "", "token-1")
+        register_client._print = mock.Mock()
+
+        engine = runtime_engine.RegistrationEngine(idx=1, total=1, proxy=None, output_file="out.txt")
+        service, mailbox, provider = engine._create_mailbox_with_fallback(register_client, "tempmail_lol")
+
+        self.assertIsInstance(service, email_services.LaMailMailboxService)
+        self.assertEqual(provider, "lamail")
+        self.assertEqual(mailbox.email, "fallback@example.com")
 
     def test_load_config_supports_batch_runtime_defaults(self):
         fake_config = {

@@ -55,6 +55,11 @@ class LaMailMailboxService(BaseMailboxService):
         return self._session
 
 
+def should_fallback_to_lamail(error: Exception) -> bool:
+    text = str(error or "").lower()
+    return "tempmail.lol" in text and "429" in text and "rate limited" in text
+
+
 def build_mailbox_service(register_client: "legacy.ChatGPTRegister", provider: str) -> BaseMailboxService:
     normalized = str(provider or "").strip().lower()
     if normalized == "tempmail_lol":
@@ -62,4 +67,3 @@ def build_mailbox_service(register_client: "legacy.ChatGPTRegister", provider: s
     if normalized == "lamail":
         return LaMailMailboxService(register_client)
     raise ValueError(f"不支持的 mail_provider={provider}，当前仅支持 tempmail_lol / lamail")
-
